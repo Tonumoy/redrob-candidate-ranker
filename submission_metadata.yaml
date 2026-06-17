@@ -1,0 +1,51 @@
+# Redrob Hackathon — Submission Metadata (mirror of portal fields)
+team_name: "TEAM_ID_FROM_INTRO_SESSION"   # must equal your registered Team ID; also used as CSV filename
+
+primary_contact:
+  name: "Tonumoy Mukherjee"
+  email: "FILL_ME@example.com"
+  phone: "+91-XXXXXXXXXX"
+
+team_members:
+  - name: "Tonumoy Mukherjee"
+    email: "FILL_ME@example.com"
+    role: "Team Lead / ML Engineer"
+
+github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"   # set to your actual public repo
+sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-ranker" # set after you deploy app.py
+reproduce_command: "python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+
+compute:
+  platform: "HP Laptop 15-fc0761AU"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.11"
+  os: "Windows 11 / WSL Ubuntu"   # adjust to where you run it
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: true          # true if you ran precompute_embeddings.py
+  pre_computation_time_minutes: 0         # fill in actual
+
+ai_tools_used:
+  - "Claude"
+ai_usage_summary: |
+  Used Claude (Claude Code) for architecture design, code review, and the
+  reasoning-template design. No candidate data was sent to any hosted LLM; the
+  ranking step runs fully offline with no API calls.
+
+methodology_summary: |
+  Hybrid interpretable ranker. Six structured features (semantic JD-vs-work-evidence,
+  demonstrated IR/ranking/recsys domain evidence, experience-band fit, product-vs-
+  services, trust-gated skills, location) combined with a behavioural-availability
+  multiplier from the 23 Redrob signals. Non-fit titles are hard-capped (keyword-
+  stuffer guard) and impossible profiles hard-zeroed (honeypot net). Reasoning is
+  deterministic and fact-grounded (no LLM, no hallucination). Ranking step runs in
+  seconds on CPU; dense sentence-transformer embeddings are precomputed offline and
+  loaded as numpy, with a TF-IDF fallback so it reproduces in any sandbox.
+
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true

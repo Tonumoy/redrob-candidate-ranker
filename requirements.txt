@@ -1,0 +1,8 @@
+# Ranking step (rank.py) — minimal, CPU-only, no network at runtime.
+numpy>=1.24
+scikit-learn>=1.3
+# Offline pre-computation only (precompute_embeddings.py). NOT needed by rank.py
+# when artifacts/ are absent (TF-IDF fallback). Install for the dense path.
+sentence-transformers>=2.2 ; extra == "dense"
+# Sandbox demo app only.
+streamlit>=1.30 ; extra == "demo"
