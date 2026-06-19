@@ -148,6 +148,14 @@ def f_penalties(c):
     t = _txt(c)
     pen = 0.0
     reasons = []
+    # Based abroad AND unwilling to relocate => JD offers no visa sponsorship,
+    # so this candidate cannot be hired into the Pune/Noida role. Strong penalty
+    # so a keyword-strong-but-unhirable profile cannot hold a top slot.
+    country = (c["profile"].get("country", "") or "").lower()
+    relocate = bool(c.get("redrob_signals", {}).get("willing_to_relocate", False))
+    if country and "india" not in country and not relocate:
+        pen += J.ABROAD_NORELOCATE_PENALTY
+        reasons.append("based abroad and not willing to relocate (JD: no visa sponsorship)")
     # CV/speech/robotics primary, no IR/NLP evidence
     wrong = sum(1 for kw in J.WRONG_SPECIALISATION if kw in t)
     nlp_ir = any(kw in t for kw in ("nlp", "natural language", "retrieval", "ranking",

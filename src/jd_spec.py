@@ -123,4 +123,12 @@ AVAIL_MIN, AVAIL_MAX = 0.55, 1.08
 # Hard cap applied to non-fit-title profiles (so stuffers cannot reach the top).
 NONFIT_TITLE_CAP = 0.18
 
+# Penalty for candidates based OUTSIDE India who are NOT willing to relocate.
+# The JD is explicit: "Outside India: case-by-case, but we don't sponsor work
+# visas." Such a candidate cannot actually be hired into the Pune/Noida hybrid
+# role, so they must not occupy a top slot regardless of how strong the profile
+# reads. Abroad-but-willing-to-relocate candidates are NOT penalised here (they
+# already get the relocate location credit and sit mid-pack).
+ABROAD_NORELOCATE_PENALTY = 0.35
+
 TOP_K = 100
