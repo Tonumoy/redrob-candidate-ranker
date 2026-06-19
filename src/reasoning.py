@@ -30,17 +30,50 @@ def _first_achievement(c):
     return s[:140]
 
 
+# Concept groups: one readable, LITERAL term per distinct concept. We emit the
+# first key that actually appears in the candidate's text, so the reasoning never
+# says "ranking, rank, ranker" (three stems of one idea) and every emitted term is
+# a real substring of the profile (no hallucination).
+_CONCEPT_GROUPS = [
+    ["ranking", "learning to rank", "ranker", "relevance"],
+    ["retrieval", "information retrieval", "semantic search"],
+    ["recommendation", "recommender", "personalization", "personalisation"],
+    ["embeddings", "embedding", "sentence-transformers"],
+    ["vector search", "faiss", "pinecone", "qdrant", "weaviate", "milvus"],
+    ["bm25", "elasticsearch", "opensearch", "search relevance"],
+    ["ndcg", "mrr", "mean average precision", "a/b test", "ab test"],
+    ["matching", "candidate matching", "two-tower"],
+]
+
+
 def _matched_terms(c):
     from features import _txt
     t = _txt(c)
-    found = [kw for kw in (J.DOMAIN_CORE + J.DOMAIN_EVAL) if kw in t]
-    # de-dup-ish, keep short, human-readable
-    pretty = []
-    for f in found:
-        f = f.strip()
-        if f and f not in pretty:
-            pretty.append(f)
-    return pretty[:3]
+    out = []
+    for group in _CONCEPT_GROUPS:
+        for key in group:
+            if key in t:
+                out.append(key)        # first (most readable) literal hit per concept
+                break
+    return out[:3]
+
+
+def _tail_note(c, comp):
+    """Honest, data-grounded reason a profile sits lower when no explicit concern
+    fired. Names the candidate's weakest REAL signal, so we never claim a
+    strong-skilled candidate has 'adjacent skills only'. Varies per candidate."""
+    yrs = c["profile"].get("years_of_experience")
+    if comp.get("semantic", 1) < 0.55:
+        return "lower semantic overlap with the JD text than the top tier"
+    if comp.get("experience", 1) < 0.75:
+        return f"experience ({yrs} yrs) sits near the edge of the 6-8 yr band"
+    if comp.get("product", 1) < 0.7:
+        return "part of the career is in services/non-product roles"
+    if comp.get("location", 1) < 1.0:
+        city = (c["profile"].get("location", "") or "").split(",")[0].strip()
+        return f"based in {city}, outside the Noida/Pune core" if city else \
+               "outside the preferred Noida/Pune locations"
+    return "edged out by peers with stronger demonstrated evidence on the same criteria"
 
 
 def build_reasoning(c, comp, rank, top_k=100):
@@ -61,10 +94,18 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif comp.get("product", 0) >= 0.6 and company:
         facts.append(f"product-company background ({company})")
 
-    # JD-connection clause
+    # JD-connection clause. The dominant (domain-evidence) branch rotates among
+    # equivalent phrasings by the per-candidate hash so 10 sampled rows don't
+    # repeat one sentence; all three are justified by domain_evidence >= 0.5 and
+    # none over-claim specifics not in the profile.
+    h = sum(ord(ch) for ch in c["candidate_id"]) % 3
     jd_clause = ""
     if comp.get("domain_evidence", 0) >= 0.5:
-        jd_clause = "matches the JD's core bar: shipped retrieval/ranking-type work"
+        jd_clause = [
+            "matches the JD's core bar: shipped retrieval/ranking-type work",
+            "hits the JD's must-have of hands-on retrieval/ranking/recsys systems",
+            "covers the JD's core ask: production search/ranking experience",
+        ][h]
     elif comp.get("semantic", 0) >= 0.6:
         jd_clause = "strong semantic fit to the systems-engineering profile the JD describes"
     elif comp.get("product", 0) >= 0.6:
@@ -89,10 +130,9 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif comp.get("location", 1) < 0.5:
         concern = "located outside the preferred India locations"
 
-    # Tone bucket by rank
+    # Tone bucket by rank (h, the per-candidate variation seed, is set above)
     frac = rank / float(top_k)
     fact_str = "; ".join(facts)
-    h = sum(ord(ch) for ch in c["candidate_id"]) % 3  # variation seed
 
     if frac <= 0.10:
         templates = [
@@ -113,10 +153,11 @@ def build_reasoning(c, comp, rank, top_k=100):
         if concern:
             base += f" Concern: {concern}."
     else:
+        note = concern or _tail_note(c, comp)
         templates = [
-            f"{fact_str}; {jd_clause}, but {concern or 'thinner evidence than higher ranks'}.",
-            f"Borderline: {fact_str}. {concern or 'adjacent skills only'} keeps this lower.",
-            f"{fact_str}. Included in the long tail — {concern or 'partial match only'}.",
+            f"{fact_str}; {jd_clause}. Lower in the list: {note}.",
+            f"Borderline fit: {fact_str}. {jd_clause}, but {note}.",
+            f"{fact_str}. {jd_clause}; in the long tail — {note}.",
         ]
         base = templates[h]
     return base.replace("  ", " ").strip()
