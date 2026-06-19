@@ -1,28 +1,58 @@
 """
-app.py — Sandbox / demo (HuggingFace Spaces or Streamlit Cloud).
+app.py — Redrob Candidate Ranker sandbox (HuggingFace Spaces / Streamlit Cloud).
 
-Satisfies submission_spec Section 10.5: accepts a small candidate sample
-(≤100), runs the ranking system end-to-end on CPU within the budget, and
-shows the ranked CSV. Uses the TF-IDF backend so it needs no model download.
+Satisfies submission_spec Section 10.5: accepts a small candidate sample (<=100),
+runs the ranking system end-to-end on CPU within budget, and shows the ranked CSV.
+Uses the TF-IDF backend (pure scikit-learn) so it needs no model download or
+network and finishes in seconds.
 
-Deploy on HF Spaces (SDK: streamlit) or Streamlit Cloud. Put this file at repo
-root or adjust the sys.path import below.
+Deploy on HF Spaces (SDK: streamlit) with this file at the repo root next to src/.
 """
-import os, sys, json, io
+import os, sys, json, io, csv, time
 import streamlit as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 import features as F, semantic as S, scoring as SC, reasoning as R, jd_spec as J
 
-st.set_page_config(page_title="Redrob Candidate Ranker", layout="wide")
-st.title("Intelligent Candidate Ranker — India.RUNS Track 1")
-st.caption("Upload up to 100 candidate records (JSON array or JSONL). "
-           "Runs the full ranking pipeline on CPU and returns the ranked CSV.")
+st.set_page_config(page_title="Redrob Candidate Ranker", page_icon="🎯", layout="wide")
 
-up = st.file_uploader("Candidate sample (.json / .jsonl)", type=["json", "jsonl"])
-k = st.slider("Top K", 5, 100, 25)
+with st.sidebar:
+    st.header("How it ranks")
+    st.markdown(
+        "An **interpretable hybrid ranker** for the *Senior AI Engineer — Founding "
+        "Team* JD. Each candidate is scored on:\n"
+        "- **Semantic match** (TF-IDF) of the JD against *work evidence* (career "
+        "history + summary), not the raw skill list — catches plain-language fits.\n"
+        "- **Demonstrated domain work** (IR / ranking / search / recsys in the "
+        "career text).\n"
+        "- **Experience band** (6–8 yr sweet spot), **product-vs-services**, "
+        "**trust-gated skills**, **location**.\n"
+        "- A **behavioural availability** multiplier from the 23 Redrob signals.\n\n"
+        "Guards: a **non-fit-title hard cap** sinks keyword stuffers (HR/Sales/"
+        "Marketing with AI skills), a **high-precision honeypot check** zeroes "
+        "impossible profiles, and an **abroad + won't-relocate** penalty drops "
+        "unhirable profiles. Reasoning is **fact-grounded** (no LLM, no hallucination)."
+    )
+    st.caption("CPU-only · no network · no GPU · seconds per run.")
 
-if up:
+st.title("🎯 Intelligent Candidate Ranker — India.RUNS Track 1")
+st.caption(
+    "Upload up to 100 candidate records (JSON array or JSONL), or load the bundled "
+    "demo sample. Runs the full ranking pipeline on CPU and returns the ranked CSV "
+    "in the official submission format."
+)
+
+c1, c2 = st.columns([3, 1])
+with c1:
+    up = st.file_uploader("Candidate sample (.json / .jsonl)", type=["json", "jsonl"])
+with c2:
+    st.write("")
+    st.write("")
+    demo = st.button("Load demo sample", use_container_width=True)
+k = st.slider("Top K to display", 5, 100, 25)
+
+cands = None
+if up is not None:
     raw = up.read().decode("utf-8").strip()
     try:
         cands = json.loads(raw)
@@ -30,23 +60,51 @@ if up:
             cands = [cands]
     except json.JSONDecodeError:
         cands = [json.loads(l) for l in raw.splitlines() if l.strip()]
-    cands = cands[:100]
-    st.write(f"Loaded **{len(cands)}** candidates. Ranking…")
+elif demo:
+    for name in ("demo_sample.jsonl", "sample.jsonl"):
+        p = os.path.join(os.path.dirname(__file__), name)
+        if os.path.exists(p):
+            cands = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+            break
 
+if cands:
+    cands = cands[:100]
+    t0 = time.time()
     ev = [F.evidence_text(c) for c in cands]
     sem = S.tfidf_similarity(ev, J.JD_QUERY)
     scored = SC.score_all(cands, sem)
     scored.sort(key=lambda x: (-x[2], x[0]["candidate_id"]))
     top = scored[:k]
     raw_max = max((s for _, _, s in top), default=1.0) or 1.0
-    rows = [{"candidate_id": c["candidate_id"], "rank": i + 1,
-             "score": round(s * 0.99 / raw_max, 6),
-             "reasoning": R.build_reasoning(c, comp, i + 1, k)}
-            for i, (c, comp, s) in enumerate(top)]
-    st.dataframe(rows, use_container_width=True)
+
+    rows, csv_rows = [], []
+    for i, (c, comp, s) in enumerate(top):
+        p = c["profile"]
+        score = round(s * 0.99 / raw_max, 6)
+        reasoning = R.build_reasoning(c, comp, i + 1, k)
+        flag = "honeypot" if comp.get("is_honeypot") else ("non-fit title" if comp.get("title_nonfit") else "")
+        rows.append({
+            "rank": i + 1, "candidate_id": c["candidate_id"], "score": score,
+            "title": p.get("current_title", ""), "yrs": p.get("years_of_experience", ""),
+            "company": p.get("current_company", ""), "location": p.get("location", ""),
+            "flag": flag, "reasoning": reasoning,
+        })
+        csv_rows.append({"candidate_id": c["candidate_id"], "rank": i + 1,
+                         "score": score, "reasoning": reasoning})
+    dt = time.time() - t0
+
+    n_hp = sum(1 for _, comp, _ in top if comp.get("is_honeypot"))
+    n_nf = sum(1 for _, comp, _ in top if comp.get("title_nonfit"))
+    st.success(f"Ranked **{len(cands)}** candidates → top **{k}** in **{dt:.2f}s** "
+               f"(CPU · TF-IDF · no network).")
+    st.caption(f"In the shown top-{k}: honeypots = {n_hp} · non-fit titles = {n_nf} "
+               "(both should be ~0 at the top — the traps sink to the bottom).")
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
     buf = io.StringIO()
-    import csv
     w = csv.DictWriter(buf, fieldnames=["candidate_id", "rank", "score", "reasoning"])
-    w.writeheader(); w.writerows(rows)
-    st.download_button("Download ranked CSV", buf.getvalue(),
+    w.writeheader(); w.writerows(csv_rows)
+    st.download_button("⬇ Download ranked CSV (submission format)", buf.getvalue(),
                        file_name="submission_preview.csv", mime="text/csv")
+else:
+    st.info("Upload a file or click **Load demo sample** to see the ranker in action.")
