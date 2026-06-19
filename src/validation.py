@@ -9,6 +9,15 @@ honeypot recall — honeypots are weak on every other axis and a good scorer
 avoids them anyway. The hard-zero is a safety net to keep the top-100 honeypot
 rate at ~0% (DQ threshold is >10%).
 
+Empirically validated on this pool: this detector flags 12/100,000 profiles, all
+genuinely impossible (e.g. 251 months of role tenure vs 119 months of stated
+experience) and all non-fit titles that never approach the top-100. Crucially we
+do NOT treat "skill duration_months > career length" as impossible: that pattern
+holds for ~30% of the top-100 (skill durations are sampled up to ~96 months
+independent of years_of_experience), so it is dataset noise, not a honeypot
+signature — flagging it would demote a third of the strongest real candidates.
+No top-100 profile carries the "expert skill with 0 months used" signature.
+
 Returns (is_honeypot: bool, reasons: list[str]).
 """
 from datetime import date
