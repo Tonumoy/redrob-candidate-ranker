@@ -12,7 +12,7 @@ team_members:
     role: "Team Lead / ML Engineer"
 
 github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"   # set to your actual public repo
-sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-ranker" # set after you deploy app.py
+sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker" # LIVE (Docker/Streamlit, public)
 reproduce_command: "python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
 compute:
