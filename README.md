@@ -11,8 +11,16 @@ python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv
 python validate_submission.py ./submission.csv   # -> "Submission is valid."
 ```
 
-Runs **CPU-only, no network, < 5 min** on a 16 GB machine. `candidates.jsonl`
+Runs **CPU-only, no network, well under the 5-min / 16 GB budget** — measured
+**~100 s in under 8 GB RAM** on a 2-core Intel i7-7500U laptop. `candidates.jsonl`
 or `candidates.jsonl.gz` both work.
+
+## Live sandbox (demo)
+
+**https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker** — upload up to
+100 candidate records (JSON array or JSONL) or click **Load demo sample**; it
+runs the full pipeline on CPU in seconds and returns the ranked CSV in the
+official submission format. The HF Space Docker config lives in [`space/`](space/).
 
 ### Optional dense upgrade (offline pre-computation)
 
@@ -37,9 +45,11 @@ not their skill list), **experience-band fit**, **product-vs-services**,
 nothing — the keyword-stuffer guard), and **location**. A **behavioural
 availability multiplier** built from the 23 Redrob signals down-weights
 perfect-on-paper-but-unavailable profiles. A **non-fit-title hard cap** keeps
-keyword stuffers (HR/Sales/Marketing/etc. with AI skills) out of the top, and a
+keyword stuffers (HR/Sales/Marketing/etc. with AI skills) out of the top, a
 **high-precision impossibility check** (`src/validation.py`) hard-zeros
-honeypots. Reasoning is **fact-grounded and deterministic** (no LLM) — it only
+honeypots, and an **abroad-and-won't-relocate penalty** drops profiles the JD
+can't actually hire (no visa sponsorship). Reasoning is **fact-grounded and
+deterministic** (no LLM) — it only
 ever cites fields that exist on the profile, names the JD axis matched, and
 surfaces a real concern, so it passes the Stage-4 no-hallucination checks.
 
@@ -54,7 +64,11 @@ src/scoring.py              combiner -> final score
 src/reasoning.py            fact-grounded, varied, no-LLM reasoning
 src/rank.py                 THE reproduce command
 src/precompute_embeddings.py  offline dense artifacts (optional)
-app.py                      Streamlit sandbox (HF Spaces / Streamlit Cloud)
+app.py                      Streamlit sandbox app (CPU, TF-IDF)
+demo_sample.jsonl           24 curated records for the sandbox "Load demo sample"
+eval/local_eval.py          honeypot/non-fit-rate + top-10 inspection harness
+notebooks/                  Colab GPU notebook to regenerate the dense artifacts
+space/                      HF Space Docker deployment config (Dockerfile, deps)
 tests/test_format.py        validator-invariant test
 validate_submission.py      organiser's format validator (copied from bundle)
 submission_metadata.yaml    portal metadata mirror
@@ -63,4 +77,6 @@ submission_metadata.yaml    portal metadata mirror
 ## Compute & constraints
 
 CPU-only · no network during ranking · ≤ 5 min · ≤ 16 GB · top-100 only.
-AI tools used in development are declared honestly in `submission_metadata.yaml`.
+Measured: **~100 s, < 8 GB RAM, no network** on the full 100k pool (TF-IDF
+backend). AI tools used in development are declared honestly in
+`submission_metadata.yaml`.

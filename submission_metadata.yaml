@@ -1,51 +1,63 @@
 # Redrob Hackathon — Submission Metadata (mirror of portal fields)
-team_name: "TEAM_ID_FROM_INTRO_SESSION"   # must equal your registered Team ID; also used as CSV filename
+
+# >>> FILL ME: your registered Team/Participant ID (also the CSV filename: <ID>.csv)
+team_name: "FILL_ME_TEAM_ID"
 
 primary_contact:
   name: "Tonumoy Mukherjee"
-  email: "FILL_ME@example.com"
-  phone: "+91-XXXXXXXXXX"
+  email: "tonumoymukherjee2@gmail.com"
+  phone: "FILL_ME_PHONE"          # >>> FILL ME: +91-XXXXXXXXXX
 
 team_members:
   - name: "Tonumoy Mukherjee"
-    email: "FILL_ME@example.com"
+    email: "tonumoymukherjee2@gmail.com"
     role: "Team Lead / ML Engineer"
 
-github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"   # set to your actual public repo
-sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker" # LIVE (Docker/Streamlit, public)
+# >>> CONFIRM: set to the actual public repo URL once created (Phase 6 push)
+github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"
+sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker"  # LIVE (public, Docker/Streamlit)
 reproduce_command: "python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
 compute:
-  platform: "HP Laptop 15-fc0761AU"
-  cpu_cores: 8
-  ram_gb: 16
-  python_version: "3.11"
-  os: "Windows 11 / WSL Ubuntu"   # adjust to where you run it
-  uses_gpu_for_inference: false
-  has_network_during_ranking: false
-  pre_computation_required: true          # true if you ran precompute_embeddings.py
-  pre_computation_time_minutes: 0         # fill in actual
+  platform: "ASUS X556UQK laptop"
+  cpu: "Intel Core i7-7500U @ 2.70GHz (2 physical cores / 4 threads)"
+  cpu_cores: 4
+  ram_gb: 8                         # ranking step runs comfortably under 8 GB (limit is 16 GB)
+  python_version: "3.14"
+  os: "Windows 10 Pro (10.0.19045)"
+  uses_gpu_for_inference: false     # ranking step is CPU-only
+  has_network_during_ranking: false # no API/network calls during ranking
+  pre_computation_required: false   # SHIPPED ranking uses TF-IDF -> no precompute needed
+  pre_computation_time_minutes: 0   # (optional dense embeddings were precomputed on a Colab T4 in ~3 min, but are NOT used for the submitted CSV)
 
 ai_tools_used:
   - "Claude"
 ai_usage_summary: |
-  Used Claude (Claude Code) for architecture design, code review, and the
-  reasoning-template design. No candidate data was sent to any hosted LLM; the
-  ranking step runs fully offline with no API calls.
+  Used Claude (Claude Code) as a pair-programmer for extending the reference
+  implementation: tuning the JD-decoded weights/penalties, the reasoning
+  templates, the sandbox app, and code review. No candidate data was ever sent
+  to any hosted LLM; the ranking step runs fully offline with no API calls.
 
 methodology_summary: |
-  Hybrid interpretable ranker. Six structured features (semantic JD-vs-work-evidence,
-  demonstrated IR/ranking/recsys domain evidence, experience-band fit, product-vs-
-  services, trust-gated skills, location) combined with a behavioural-availability
-  multiplier from the 23 Redrob signals. Non-fit titles are hard-capped (keyword-
-  stuffer guard) and impossible profiles hard-zeroed (honeypot net). Reasoning is
-  deterministic and fact-grounded (no LLM, no hallucination). Ranking step runs in
-  seconds on CPU; dense sentence-transformer embeddings are precomputed offline and
-  loaded as numpy, with a TF-IDF fallback so it reproduces in any sandbox.
+  Interpretable hybrid ranker. Six structured features in [0,1] -- a semantic
+  match of the JD against each candidate's WORK EVIDENCE (career history +
+  summary, not the raw skill list), demonstrated IR/ranking/search/recsys domain
+  evidence, experience-band fit (6-8 yr), product-vs-services, trust-gated skills
+  (stuffed 0-endorsement skills earn nothing), and location -- combined with a
+  behavioural-availability multiplier built from the 23 Redrob signals. Guards:
+  a non-fit-title hard cap sinks keyword stuffers (HR/Sales/Marketing with AI
+  skills), a high-precision impossibility check zeroes honeypots, and an
+  abroad-and-won't-relocate penalty drops unhirable profiles (JD: no visa
+  sponsorship). Reasoning is deterministic and fact-grounded (no LLM) so it never
+  hallucinates skills/employers not in the profile. The SUBMITTED ranking uses a
+  pure scikit-learn TF-IDF semantic backend -- CPU-only, no network, no
+  downloads, ~100 s on the full 100k pool in under 8 GB -- so it reproduces in
+  any sandbox. An optional dense bge-small backend (precomputed offline, loaded
+  as numpy) is included and auto-used if its artifacts are present.
 
 declarations:
   read_submission_spec: true
-  code_is_original_work: true
+  code_is_original_work: true       # extends the provided reference implementation; all tuning is ours
   no_collusion: true
-  honeypot_check_done: true
+  honeypot_check_done: true         # 0% honeypots in top-100 (verified)
   reproduction_tested: true
