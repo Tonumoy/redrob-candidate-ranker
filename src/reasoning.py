@@ -108,7 +108,7 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif comp.get("product", 0) >= 0.6:
         pc = _product_company(c)
         facts.append(f"product-company background ({pc})" if pc
-                     else "product-company applied-ML background")
+                     else "product-company engineering background")
 
     # JD-connection clause. The dominant (domain-evidence) branch rotates among
     # equivalent phrasings by the per-candidate hash so 10 sampled rows don't
@@ -125,7 +125,8 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif comp.get("semantic", 0) >= 0.6:
         jd_clause = "strong semantic fit to the systems-engineering profile the JD describes"
     elif comp.get("product", 0) >= 0.6:
-        jd_clause = "product-company applied-ML profile the JD prefers over services/research"
+        jd_clause = ("adjacent to the JD's applied-ML focus, without demonstrated "
+                     "retrieval/ranking work")
     else:
         jd_clause = "adjacent fit on the JD's secondary criteria"
 
@@ -146,12 +147,27 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif comp.get("location", 1) < 0.5:
         concern = "located outside the preferred India locations"
 
-    # Tone bucket by rank (h, the per-candidate variation seed, is set above)
+    # Disqualifier-led reasoning: a honeypot or non-fit-title profile must never
+    # read as a "top pick" / "solid fit" -- lead with the honest reason it is capped.
+    if comp.get("is_honeypot"):
+        return (f"{title} with {yrs} yrs — profile has internal inconsistencies "
+                "(impossible tenure/skill claims), so flagged and floored.")
+    if comp.get("title_nonfit"):
+        return (f"{title} with {yrs} yrs — current title is outside the AI/ML "
+                "engineering profile the JD targets, so ranked a non-fit despite "
+                "any listed AI skills.")
+
+    # Tone bucket by rank (h, the per-candidate variation seed, is set above).
+    # The strongest praise ("Top pick"/"Standout") is reserved for candidates who
+    # actually match the JD core (demonstrated domain work or strong semantic fit),
+    # so an adjacent-only profile is never called a top pick even if it sits high
+    # in a weak/small input.
     frac = rank / float(top_k)
     fact_str = "; ".join(facts)
+    strong = comp.get("domain_evidence", 0) >= 0.5 or comp.get("semantic", 0) >= 0.6
 
     jc = jd_clause[0].upper() + jd_clause[1:]   # capitalised form for sentence starts
-    if frac <= 0.10:
+    if frac <= 0.10 and strong:
         templates = [
             f"{fact_str}. Top pick — {jd_clause}.",
             f"Standout: {fact_str}; {jd_clause}.",
