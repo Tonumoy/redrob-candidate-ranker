@@ -1,20 +1,19 @@
 # Redrob Hackathon — Submission Metadata (mirror of portal fields)
 
-# >>> FILL ME: your registered Team/Participant ID (also the CSV filename: <ID>.csv)
-team_name: "FILL_ME_TEAM_ID"
+# Registered Team/Participant ID (also the CSV filename: tonumoy_mukherjee.csv)
+team_name: "tonumoy_mukherjee"
 
 primary_contact:
   name: "Tonumoy Mukherjee"
   email: "tonumoymukherjee2@gmail.com"
-  phone: "FILL_ME_PHONE"          # >>> FILL ME: +91-XXXXXXXXXX
+  phone: "+91-XXXXXXXXXX"          # placeholder in this PUBLIC repo; real number entered on the portal only
 
 team_members:
   - name: "Tonumoy Mukherjee"
     email: "tonumoymukherjee2@gmail.com"
     role: "Team Lead / ML Engineer"
 
-# >>> CONFIRM: set to the actual public repo URL once created (Phase 6 push)
-github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"
+github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"   # public repo (created in Phase 6)
 sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker"  # LIVE (public, Docker/Streamlit)
 reproduce_command: "python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
@@ -33,10 +32,14 @@ compute:
 ai_tools_used:
   - "Claude"
 ai_usage_summary: |
-  Used Claude (Claude Code) as a pair-programmer for extending the reference
-  implementation: tuning the JD-decoded weights/penalties, the reasoning
-  templates, the sandbox app, and code review. No candidate data was ever sent
-  to any hosted LLM; the ranking step runs fully offline with no API calls.
+  Claude (Claude Code) was used as a pair-programmer for architecture design,
+  code scaffolding, implementing the JD-decoded weights/penalties and reasoning
+  templates, building the sandbox app, and code review. All strategic decisions
+  were made and approved by the human author: which semantic backend to ship
+  (TF-IDF over dense), how to treat each dataset trap, and acceptance of every
+  tuning change only after reviewing its effect on the top-10. Every result was
+  verified against real terminal output. No candidate data was ever sent to any
+  hosted LLM, and the ranking step makes no network or API calls.
 
 methodology_summary: |
   Interpretable hybrid ranker. Six structured features in [0,1] -- a semantic
