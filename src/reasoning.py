@@ -134,11 +134,12 @@ def build_reasoning(c, comp, rank, top_k=100):
     frac = rank / float(top_k)
     fact_str = "; ".join(facts)
 
+    jc = jd_clause[0].upper() + jd_clause[1:]   # capitalised form for sentence starts
     if frac <= 0.10:
         templates = [
             f"{fact_str}. Top pick — {jd_clause}.",
             f"Standout: {fact_str}; {jd_clause}.",
-            f"{fact_str}. {jd_clause[0].upper()+jd_clause[1:]} — strong across the JD's must-haves.",
+            f"{fact_str}. {jc} — strong across the JD's must-haves.",
         ]
         base = templates[h]
         if concern and not comp.get("is_honeypot"):
@@ -146,8 +147,8 @@ def build_reasoning(c, comp, rank, top_k=100):
     elif frac <= 0.5:
         templates = [
             f"{fact_str}; {jd_clause}.",
-            f"Solid fit: {fact_str}. {jd_clause[0].upper()+jd_clause[1:]}.",
-            f"{fact_str}. {jd_clause}.",
+            f"Solid fit: {fact_str}. {jc}.",
+            f"{fact_str}. {jc}.",
         ]
         base = templates[h]
         if concern:
@@ -156,8 +157,8 @@ def build_reasoning(c, comp, rank, top_k=100):
         note = concern or _tail_note(c, comp)
         templates = [
             f"{fact_str}; {jd_clause}. Lower in the list: {note}.",
-            f"Borderline fit: {fact_str}. {jd_clause}, but {note}.",
-            f"{fact_str}. {jd_clause}; in the long tail — {note}.",
+            f"Borderline fit: {fact_str}. {jc}, but {note}.",
+            f"{fact_str}. {jc}; in the long tail — {note}.",
         ]
         base = templates[h]
     return base.replace("  ", " ").strip()
