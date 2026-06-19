@@ -44,7 +44,9 @@ st.caption(
 
 c1, c2 = st.columns([3, 1])
 with c1:
-    up = st.file_uploader("Candidate sample (.json / .jsonl)", type=["json", "jsonl"])
+    # No `type=` filter on purpose: .jsonl has no standard MIME type and some
+    # browsers reject it client-side. We accept any file and validate content below.
+    up = st.file_uploader("Candidate sample (JSON array or JSONL — one object per line)")
 with c2:
     st.write("")
     st.write("")
@@ -53,13 +55,20 @@ k = st.slider("Top K to display", 5, 100, 25)
 
 cands = None
 if up is not None:
-    raw = up.read().decode("utf-8").strip()
     try:
-        cands = json.loads(raw)
-        if isinstance(cands, dict):
-            cands = [cands]
-    except json.JSONDecodeError:
-        cands = [json.loads(l) for l in raw.splitlines() if l.strip()]
+        raw = up.read().decode("utf-8", errors="replace").strip()
+        try:
+            data = json.loads(raw)                      # JSON array (or single object)
+            cands = data if isinstance(data, list) else [data]
+        except json.JSONDecodeError:
+            cands = [json.loads(l) for l in raw.splitlines() if l.strip()]  # JSONL
+        if not cands:
+            st.warning("No candidate records found in that file.")
+            cands = None
+    except Exception as e:
+        st.error(f"Could not parse the uploaded file ({e}). "
+                 "Upload a JSON array or JSONL (one JSON object per line).")
+        cands = None
 elif demo:
     for name in ("demo_sample.jsonl", "sample.jsonl"):
         p = os.path.join(os.path.dirname(__file__), name)
