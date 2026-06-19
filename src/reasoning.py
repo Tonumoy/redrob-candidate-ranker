@@ -58,6 +58,20 @@ def _matched_terms(c):
     return out[:3]
 
 
+def _product_company(c):
+    """Name a real product-classified employer (never a known services firm) from
+    the candidate's history. Returns '' if none -- so the reasoning never calls a
+    services-firm current employer (e.g. Mindtree/Genpact) a 'product company'."""
+    from features import _industry_class
+    for r in c.get("career_history", []) or []:
+        comp = (r.get("company", "") or "")
+        if not comp or any(f in comp.lower() for f in J.SERVICES_FIRMS):
+            continue
+        if _industry_class(r.get("industry")) == "product":
+            return comp
+    return ""
+
+
 def _tail_note(c, comp):
     """Honest, data-grounded reason a profile sits lower when no explicit concern
     fired. Names the candidate's weakest REAL signal, so we never claim a
@@ -91,8 +105,10 @@ def build_reasoning(c, comp, rank, top_k=100):
     facts.append(f"{title} with {yrs} yrs")
     if terms:
         facts.append("demonstrated " + ", ".join(terms))
-    elif comp.get("product", 0) >= 0.6 and company:
-        facts.append(f"product-company background ({company})")
+    elif comp.get("product", 0) >= 0.6:
+        pc = _product_company(c)
+        facts.append(f"product-company background ({pc})" if pc
+                     else "product-company applied-ML background")
 
     # JD-connection clause. The dominant (domain-evidence) branch rotates among
     # equivalent phrasings by the per-candidate hash so 10 sampled rows don't

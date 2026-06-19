@@ -63,9 +63,13 @@ LOCATION_PRIMARY = {"pune", "noida", "hyderabad", "mumbai", "delhi", "gurgaon",
 
 # ---- Company classification.
 # Product-company industries (positive). Services / non-tech (negative-ish).
+# NOTE: keep these specific. Bare substrings like "ai" or "product" cause false
+# positives via `k in industry` matching -- e.g. "ai" matched "Retail" (r-et-AI-l)
+# and "product" matched "Paper Products", misclassifying non-tech firms as product.
 PRODUCT_INDUSTRIES = {"software", "fintech", "e-commerce", "ecommerce", "saas",
-                      "gaming", "edtech", "food delivery", "internet", "product",
-                      "ai", "social media", "healthtech", "adtech"}
+                      "gaming", "edtech", "food delivery", "internet",
+                      "ai/", " ai", "artificial intelligence",
+                      "social media", "healthtech", "adtech"}
 SERVICES_INDUSTRIES = {"it services", "consulting", "outsourcing", "staffing"}
 NONTECH_INDUSTRIES = {"manufacturing", "paper products", "conglomerate",
                       "construction", "logistics", "retail", "bpo"}
