@@ -16,6 +16,15 @@ import features as F, semantic as S, scoring as SC, reasoning as R, jd_spec as J
 
 st.set_page_config(page_title="Redrob Candidate Ranker", page_icon="🎯", layout="wide")
 
+
+@st.cache_resource
+def _load_st_model(name="BAAI/bge-small-en-v1.5"):
+    """Load the sentence-transformer once (cached). Used for the dense/hybrid modes
+    so they work on arbitrary uploads (not just the precomputed pool)."""
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(name)
+
+
 with st.sidebar:
     st.header("How it ranks")
     st.markdown(
@@ -33,7 +42,8 @@ with st.sidebar:
         "impossible profiles, and an **abroad + won't-relocate** penalty drops "
         "unhirable profiles. Reasoning is **fact-grounded** (no LLM, no hallucination)."
     )
-    st.caption("CPU-only · no network · no GPU · seconds per run.")
+    st.caption("CPU-only · interpretable · fact-grounded reasoning. "
+               "Pick a **Ranking mode** below to compare backends.")
 
 st.title("🎯 Intelligent Candidate Ranker — India.RUNS Track 1")
 st.caption(
@@ -52,6 +62,23 @@ with c2:
     st.write("")
     demo = st.button("Load demo sample", use_container_width=True)
 k = st.slider("Top K to display", 5, 100, 25)
+
+MODES = {
+    "Hybrid — embeddings + keywords (recommended)":
+        "What we submit: 0.3·dense (bge-small) + 0.7·TF-IDF. Keyword precision at "
+        "the top + semantic recall at the margin — keeps the strongest profile #1 "
+        "and still catches plain-language fits.",
+    "TF-IDF — keywords only (fast, fully offline)":
+        "Pure scikit-learn keyword/phrase matching over work evidence. No model "
+        "download, runs in milliseconds. The bulletproof air-gapped fallback.",
+    "Dense — embeddings only (semantic)":
+        "Cosine over bge-small embeddings. Understands meaning/paraphrase and "
+        "catches buzzword-free fits, but flattens the top (can demote the "
+        "strongest keyword-rich profile).",
+}
+mode = st.radio("Ranking mode", list(MODES.keys()),
+                help="Switch backends and watch the ranking change on your own upload.")
+st.caption(MODES[mode])
 
 cands = None
 if up is not None:
@@ -80,7 +107,24 @@ if cands:
     cands = cands[:100]
     t0 = time.time()
     ev = [F.evidence_text(c) for c in cands]
-    sem = S.tfidf_similarity(ev, J.JD_QUERY)
+    if mode.startswith("TF-IDF"):
+        sem = S.tfidf_similarity(ev, J.JD_QUERY)
+        backend_label = "TF-IDF (keywords)"
+    else:
+        try:
+            with st.spinner("Loading bge-small embeddings (first run downloads ~130 MB)…"):
+                model = _load_st_model()
+            dense = S.encode_live(model, ev, J.JD_QUERY)
+            if mode.startswith("Dense"):
+                sem, backend_label = dense, "Dense (bge-small)"
+            else:
+                tfidf = S.tfidf_similarity(ev, J.JD_QUERY)
+                sem = J.HYBRID_W_DENSE * dense + (1 - J.HYBRID_W_DENSE) * tfidf
+                backend_label = f"Hybrid ({J.HYBRID_W_DENSE}·dense + {round(1-J.HYBRID_W_DENSE,2)}·TF-IDF)"
+        except Exception as e:
+            st.warning(f"Embedding backend unavailable ({e}); using TF-IDF.")
+            sem = S.tfidf_similarity(ev, J.JD_QUERY)
+            backend_label = "TF-IDF (fallback)"
     scored = SC.score_all(cands, sem)
     scored.sort(key=lambda x: (-x[2], x[0]["candidate_id"]))
     top = scored[:k]
@@ -105,7 +149,7 @@ if cands:
     n_hp = sum(1 for _, comp, _ in top if comp.get("is_honeypot"))
     n_nf = sum(1 for _, comp, _ in top if comp.get("title_nonfit"))
     st.success(f"Ranked **{len(cands)}** candidates → top **{k}** in **{dt:.2f}s** "
-               f"(CPU · TF-IDF · no network).")
+               f"(CPU · **{backend_label}**).")
     st.caption(f"In the shown top-{k}: honeypots = {n_hp} · non-fit titles = {n_nf} "
                "(both should be ~0 at the top — the traps sink to the bottom).")
     st.dataframe(rows, use_container_width=True, hide_index=True)

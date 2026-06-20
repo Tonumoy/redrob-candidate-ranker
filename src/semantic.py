@@ -62,6 +62,15 @@ def tfidf_similarity(evidence_texts, jd_query):
     return _minmax(sims)
 
 
+def encode_live(model, evidence_texts, jd_query):
+    """Dense cosine computed AT REQUEST TIME with a sentence-transformer, for the
+    demo sandbox where uploaded candidates are not in the precomputed artifacts.
+    `model` is a preloaded SentenceTransformer. Returns similarity in [0,1]."""
+    emb = np.asarray(model.encode(evidence_texts, normalize_embeddings=True), dtype="float64")
+    jd = np.asarray(model.encode([jd_query], normalize_embeddings=True)[0], dtype="float64")
+    return _minmax(emb @ jd)
+
+
 def hybrid_similarity(cand_ids, evidence_texts, jd_query, w_dense=0.3):
     """Fuse dense (semantic meaning, catches plain-language/paraphrase fits) with
     TF-IDF (exact lexical precision, keeps keyword-strong elites at the top). Both
