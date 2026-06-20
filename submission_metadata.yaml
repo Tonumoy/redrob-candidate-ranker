@@ -24,10 +24,10 @@ compute:
   ram_gb: 8                         # ranking step runs comfortably under 8 GB (limit is 16 GB)
   python_version: "3.14"
   os: "Windows 10 Pro (10.0.19045)"
-  uses_gpu_for_inference: false     # ranking step is CPU-only
+  uses_gpu_for_inference: false     # ranking step is CPU-only (loads precomputed .npy via numpy)
   has_network_during_ranking: false # no API/network calls during ranking
-  pre_computation_required: false   # SHIPPED ranking uses TF-IDF -> no precompute needed
-  pre_computation_time_minutes: 0   # (optional dense embeddings were precomputed on a Colab T4 in ~3 min, but are NOT used for the submitted CSV)
+  pre_computation_required: true    # shipped hybrid uses precomputed bge-small embeddings (committed via Git LFS)
+  pre_computation_time_minutes: 3   # bge-small encode of 100k on a free Colab T4 (see notebooks/); GPU+network allowed, outside the 5-min ranking budget
 
 ai_tools_used:
   - "Claude"
@@ -52,11 +52,15 @@ methodology_summary: |
   skills), a high-precision impossibility check zeroes honeypots, and an
   abroad-and-won't-relocate penalty drops unhirable profiles (JD: no visa
   sponsorship). Reasoning is deterministic and fact-grounded (no LLM) so it never
-  hallucinates skills/employers not in the profile. The SUBMITTED ranking uses a
-  pure scikit-learn TF-IDF semantic backend -- CPU-only, no network, no
-  downloads, ~100 s on the full 100k pool in under 8 GB -- so it reproduces in
-  any sandbox. An optional dense bge-small backend (precomputed offline, loaded
-  as numpy) is included and auto-used if its artifacts are present.
+  hallucinates skills/employers not in the profile. The semantic component offers
+  three measured backends (--backend): TF-IDF (lexical precision, fully offline),
+  dense bge-small (semantic recall, but flattens the top), and a HYBRID blend
+  (0.3*dense + 0.7*TF-IDF) which is what we SHIP -- it keeps the strongest profile
+  at #1 while surfacing genuine plain-language Tier-5 fits the keyword backend
+  under-ranks. The ranking step stays CPU-only / no-network / <5 min (it just
+  loads the precomputed embeddings as numpy + computes TF-IDF); the bge-small
+  embeddings are precomputed offline and committed via Git LFS, with an automatic
+  TF-IDF fallback so it still reproduces if git-lfs is unavailable.
 
 declarations:
   read_submission_spec: true

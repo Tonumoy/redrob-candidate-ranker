@@ -6,14 +6,24 @@ Ranks the top-100 candidates from the 100,000-candidate pool for the released
 ## Reproduce the submission (single command)
 
 ```bash
+git lfs install && git lfs pull          # fetch the precomputed embeddings (~146 MB)
 pip install -r requirements.txt
 python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv
 python validate_submission.py ./submission.csv   # -> "Submission is valid."
 ```
 
-Runs **CPU-only, no network, well under the 5-min / 16 GB budget** — measured
-**~100 s in under 8 GB RAM** on a 2-core Intel i7-7500U laptop. `candidates.jsonl`
-or `candidates.jsonl.gz` both work.
+The submitted CSV uses the **hybrid** backend (`--backend auto` picks hybrid when
+the dense artifacts are present). The ranking step itself is **CPU-only, no
+network, well under the 5-min / 16 GB budget** — it just *loads* the precomputed
+embeddings (numpy) and computes TF-IDF (scikit-learn); measured **~95–140 s in
+under 8 GB RAM** on a 2-core Intel i7-7500U laptop. `candidates.jsonl` or
+`candidates.jsonl.gz` both work.
+
+> No `git-lfs`? The `.npy` files arrive as pointer stubs and `rank.py`
+> automatically falls back to the **TF-IDF** backend (still valid, fully offline).
+> To restore the exact hybrid, run `python src/precompute_embeddings.py
+> --candidates ./candidates.jsonl` to regenerate the artifacts, or
+> `--backend tfidf` to force the no-artifact mode.
 
 ## Live sandbox (demo)
 
@@ -22,16 +32,27 @@ or `candidates.jsonl.gz` both work.
 runs the full pipeline on CPU in seconds and returns the ranked CSV in the
 official submission format. The HF Space Docker config lives in [`space/`](space/).
 
-### Optional dense upgrade (offline pre-computation)
+### Ranking modes (`--backend`)
+
+We built and measured three semantic backends; pick any with `--backend`:
+
+| Mode | What it does | When |
+|---|---|---|
+| **`tfidf`** | Pure scikit-learn TF-IDF over work-evidence. Exact keyword/phrase precision; **fully offline, no downloads**. | Air-gapped sandbox; the bulletproof fallback. |
+| **`dense`** | Cosine over precomputed **bge-small** embeddings. Understands meaning/paraphrase, catches buzzword-free fits — but flattens, demoting keyword-strong elites. | Recall-first experiments. |
+| **`hybrid`** (shipped) | `0.3·dense + 0.7·TF-IDF` (both min-max normalised). **TF-IDF precision at the top + dense recall at the margin** — keeps the strongest profile #1 *and* surfaces plain-language Tier-5s. | The submitted ranking; the JD's "hybrid retrieval" ideal. |
+| **`auto`** (default) | hybrid if `artifacts/` present, else tfidf. | The single reproduce command. |
+
+The dense embeddings are committed via **Git LFS** (`artifacts/*.npy`) so a clean
+clone reproduces the hybrid offline. They are produced offline (GPU/network
+allowed, outside the 5-min ranking budget) by:
 
 ```bash
-python src/precompute_embeddings.py --candidates ./candidates.jsonl
+python src/precompute_embeddings.py --candidates ./candidates.jsonl   # bge-small, ~3 min on a Colab T4
 ```
 
-Writes dense artifacts to `artifacts/`. `rank.py` uses them automatically if
-present; otherwise it falls back to a pure scikit-learn **TF-IDF** semantic
-backend (no downloads), so the ranking step always reproduces inside the
-Stage-3 sandbox.
+(or the Colab notebook in [`notebooks/`](notebooks/)). The **live demo Space lets
+you switch modes** and watch the difference on your own upload.
 
 ## How it works (one paragraph)
 
