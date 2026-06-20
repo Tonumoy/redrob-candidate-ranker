@@ -14,7 +14,7 @@ team_members:
     role: "Team Lead / ML Engineer"
 
 github_repo: "https://github.com/Tonumoy/redrob-candidate-ranker"   # public repo (created in Phase 6)
-sandbox_link: "https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker"  # LIVE (public, Docker/Streamlit)
+sandbox_link: "https://bodhi108-redrob-candidate-ranker.hf.space"  # LIVE app (direct URL; the huggingface.co/spaces/... management page also exists)
 reproduce_command: "python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
 compute:
