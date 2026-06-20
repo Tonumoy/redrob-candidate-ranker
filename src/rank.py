@@ -36,6 +36,10 @@ def main():
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--top_k", type=int, default=J.TOP_K)
+    ap.add_argument("--backend", choices=["auto", "tfidf", "dense", "hybrid"],
+                    default="auto",
+                    help="semantic backend: auto = hybrid when dense artifacts are "
+                         "present, else tfidf. tfidf is fully offline/no-download.")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -43,15 +47,28 @@ def main():
     print(f"[rank] loaded {len(cands)} candidates in {time.time()-t0:.1f}s", file=sys.stderr)
 
     ids = [c["candidate_id"] for c in cands]
+    ev = [F.evidence_text(c) for c in cands]
 
-    # --- semantic backend selection (dense if available, else TF-IDF) ---
-    if S.dense_available():
-        sem = S.dense_similarity(ids)
-        backend = "dense(precomputed)"
-    else:
-        ev = [F.evidence_text(c) for c in cands]
+    # --- semantic backend selection (robust: any dense failure -> tfidf) ---
+    want = args.backend
+    sem, backend = None, None
+    if want != "tfidf" and S.dense_available():
+        try:
+            if want == "dense":
+                sem = S.dense_similarity(ids)
+                backend = "dense(precomputed)"
+            else:  # hybrid, or auto with artifacts present
+                sem = S.hybrid_similarity(ids, ev, J.JD_QUERY, J.HYBRID_W_DENSE)
+                backend = f"hybrid(dense*{J.HYBRID_W_DENSE}+tfidf*{round(1-J.HYBRID_W_DENSE,2)})"
+        except Exception as e:
+            # e.g. artifacts present only as Git-LFS pointer stubs, or corrupt.
+            print(f"[rank] dense artifacts unusable ({e}); using tfidf", file=sys.stderr)
+            sem = None
+    if sem is None:
         sem = S.tfidf_similarity(ev, J.JD_QUERY)
         backend = "tfidf"
+        if want in ("dense", "hybrid"):
+            backend += f" (requested {want}; no usable dense artifacts/)"
     print(f"[rank] semantic backend = {backend} ({time.time()-t0:.1f}s)", file=sys.stderr)
 
     # --- score everyone ---

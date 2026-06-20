@@ -60,3 +60,15 @@ def tfidf_similarity(evidence_texts, jd_query):
     cand = mat[:-1]
     sims = linear_kernel(jd_vec, cand).ravel()
     return _minmax(sims)
+
+
+def hybrid_similarity(cand_ids, evidence_texts, jd_query, w_dense=0.3):
+    """Fuse dense (semantic meaning, catches plain-language/paraphrase fits) with
+    TF-IDF (exact lexical precision, keeps keyword-strong elites at the top). Both
+    components are min-max normalised to [0,1], so a convex blend is well-scaled.
+    Lexical-led by default (w_dense=0.3): TF-IDF governs the very top, dense adds
+    recall at the margin. Requires the dense artifacts; callers fall back to
+    tfidf_similarity when they are absent."""
+    dense = dense_similarity(cand_ids)
+    tfidf = tfidf_similarity(evidence_texts, jd_query)
+    return w_dense * dense + (1.0 - w_dense) * tfidf

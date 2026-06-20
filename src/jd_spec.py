@@ -124,6 +124,13 @@ WEIGHTS = {
 # Availability multiplier clamp (behavioural signals as a modifier, per signals doc).
 AVAIL_MIN, AVAIL_MAX = 0.55, 1.08
 
+# Hybrid semantic blend: weight on the dense (bge-small) cosine vs the TF-IDF
+# cosine, both min-max normalised to [0,1]. Lexical-led (0.3) keeps keyword
+# precision at the very top (the strongest profiles stay #1) while folding in the
+# dense signal for recall on plain-language fits at the margin. Measured: 0.3
+# keeps the elite at #1 and pulls genuine missed Tier-5s into the top-100.
+HYBRID_W_DENSE = 0.3
+
 # Hard cap applied to non-fit-title profiles (so stuffers cannot reach the top).
 NONFIT_TITLE_CAP = 0.18
 
