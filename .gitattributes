@@ -10,3 +10,4 @@
 *.jpg binary
 *.pptx binary
 *.pdf binary
+artifacts/*.npy filter=lfs diff=lfs merge=lfs -text

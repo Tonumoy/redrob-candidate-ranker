@@ -2,8 +2,6 @@ __pycache__/
 *.pyc
 candidates.jsonl
 candidates.jsonl.gz
-artifacts/*.npy
-artifacts/candidate_ids.txt
 .DS_Store
 .venv/
 venv/
