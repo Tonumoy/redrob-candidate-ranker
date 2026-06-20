@@ -27,10 +27,14 @@ under 8 GB RAM** on a 2-core Intel i7-7500U laptop. `candidates.jsonl` or
 
 ## Live sandbox (demo)
 
-**https://huggingface.co/spaces/Bodhi108/redrob-candidate-ranker** — upload up to
-100 candidate records (JSON array or JSONL) or click **Load demo sample**; it
-runs the full pipeline on CPU in seconds and returns the ranked CSV in the
-official submission format. The HF Space Docker config lives in [`space/`](space/).
+**https://redrob-candidate-ranker-tonumoy.streamlit.app** (Streamlit Community
+Cloud, deployed from this repo) — upload up to 100 candidate records (JSON array
+or JSONL) or click **Load demo sample**; it runs the pipeline on CPU in seconds
+and returns the ranked CSV in the official submission format. A mirror is on
+HuggingFace Spaces (`https://bodhi108-redrob-candidate-ranker.hf.space`; Docker
+config in [`space/`](space/)). The hosted demos use the **TF-IDF** backend for a
+light, reliable footprint; the full **hybrid** runs from this repo
+(`--backend hybrid`).
 
 ### Ranking modes (`--backend`)
 
