@@ -9,10 +9,12 @@ honeypot recall — honeypots are weak on every other axis and a good scorer
 avoids them anyway. The hard-zero is a safety net to keep the top-100 honeypot
 rate at ~0% (DQ threshold is >10%).
 
-Empirically validated on this pool: this detector flags 12/100,000 profiles, all
-genuinely impossible (e.g. 251 months of role tenure vs 119 months of stated
-experience) and all non-fit titles that never approach the top-100. Crucially we
-do NOT treat "skill duration_months > career length" as impossible: that pattern
+Empirically validated on this pool: this detector flags ~23/100,000 profiles, all
+genuinely impossible (e.g. 75 months of sequential role tenure vs 32 months of
+stated experience) -- which catches a fit-shaped honeypot (Search Engineer that
+otherwise scored into the top-100 at #53) plus the obviously-broken non-fit ones.
+Crucially we do NOT treat "skill duration_months > career length" as impossible:
+that pattern
 holds for ~30% of the top-100 (skill durations are sampled up to ~96 months
 independent of years_of_experience), so it is dataset noise, not a honeypot
 signature — flagging it would demote a third of the strongest real candidates.
@@ -59,10 +61,15 @@ def check_impossible(c):
                 soft += 1
                 reasons.append(f"duration_months {dur} != dates ~{real} at {r.get('company')}")
 
-    # --- HARD: total tenure far exceeds stated experience (can't work 2x your career).
-    if yoe_m > 0 and sum_dur > yoe_m * 2.0 and (sum_dur - yoe_m) > 48:
+    # --- HARD: total role tenure far exceeds stated experience. You cannot work
+    # substantially more months than your career is long. Measured on this pool,
+    # legitimate candidates sit at sum_dur/YoE ~= 1.00 (99th percentile = 1.00);
+    # honeypots that lowered years_of_experience while leaving the career history
+    # intact spike well above 1.5x. Threshold 1.5x + 30-month excess is therefore
+    # high-precision (zero legitimate top-candidate false positives observed).
+    if yoe_m > 0 and sum_dur > yoe_m * 1.5 and (sum_dur - yoe_m) > 30:
         hard += 1
-        reasons.append(f"sum role tenure {sum_dur}m >> 2x stated YoE ({yoe_m:.0f}m)")
+        reasons.append(f"sum role tenure {sum_dur}m >> stated YoE ({yoe_m:.0f}m) -- impossible")
 
     # --- HARD: "expert in many skills with zero usage" honeypot signature.
     expert_zero = sum(1 for s in skills
