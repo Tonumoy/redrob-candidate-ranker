@@ -121,10 +121,16 @@ if cands:
                 tfidf = S.tfidf_similarity(ev, J.JD_QUERY)
                 sem = J.HYBRID_W_DENSE * dense + (1 - J.HYBRID_W_DENSE) * tfidf
                 backend_label = f"Hybrid ({J.HYBRID_W_DENSE}·dense + {round(1-J.HYBRID_W_DENSE,2)}·TF-IDF)"
-        except Exception as e:
-            st.warning(f"Embedding backend unavailable ({e}); using TF-IDF.")
+        except Exception:
+            st.info(
+                "ℹ️ **Dense / Hybrid** use the bge-small embedding model, which isn't "
+                "bundled in this lightweight live demo (kept lean so the sandbox stays "
+                "reliably up). The full **hybrid** is what we submit — reproduce it from "
+                "the repo with `python src/rank.py --backend hybrid` (embeddings shipped "
+                "via Git LFS), and see the deck for the measured 3-mode comparison. "
+                "Showing the **TF-IDF** ranking here.")
             sem = S.tfidf_similarity(ev, J.JD_QUERY)
-            backend_label = "TF-IDF (fallback)"
+            backend_label = "TF-IDF (demo)"
     scored = SC.score_all(cands, sem)
     scored.sort(key=lambda x: (-x[2], x[0]["candidate_id"]))
     top = scored[:k]

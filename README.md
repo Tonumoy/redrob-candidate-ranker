@@ -51,8 +51,10 @@ allowed, outside the 5-min ranking budget) by:
 python src/precompute_embeddings.py --candidates ./candidates.jsonl   # bge-small, ~3 min on a Colab T4
 ```
 
-(or the Colab notebook in [`notebooks/`](notebooks/)). The **live demo Space lets
-you switch modes** and watch the difference on your own upload.
+(or the Colab notebook in [`notebooks/`](notebooks/)). The live demo Space runs
+the **TF-IDF** backend (kept lightweight so the sandbox stays reliably up); the
+full **hybrid** is reproduced from this repo (`--backend hybrid`), and the
+measured 3-mode comparison is in the deck.
 
 ## How it works (one paragraph)
 
