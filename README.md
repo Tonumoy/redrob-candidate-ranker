@@ -5,8 +5,15 @@ Ranks the top-100 candidates from the 100,000-candidate pool for the released
 
 ## Run it locally — exact commands (anyone)
 
-**Prerequisites:** Python 3.10+ and the `candidates.jsonl` (or
-`candidates.jsonl.gz`) file from the challenge bundle, placed in this folder.
+**Prerequisites:** Python 3.10+ and the official `candidates.jsonl` (or
+`candidates.jsonl.gz`) from the challenge bundle, placed in this folder.
+
+> **Where is `candidates.jsonl`? Why isn't it in the repo?** It's the organisers'
+> 100,000-row challenge dataset (~465 MB) — intentionally **not** committed (it's
+> their data to distribute, not ours, and it would bloat every clone), so it's
+> git-ignored. Graders already have it: drop it into this folder and run Step 2 to
+> reproduce the exact submission. **To see the ranker work immediately *without*
+> the full dataset, use the bundled `sample.jsonl` (Step 2b).**
 
 ### Step 1 — Clone and set up (one time)
 
@@ -40,6 +47,19 @@ under 8 GB RAM** on a 2-core Intel i7-7500U laptop. Both `candidates.jsonl` and
 > .\.venv\Scripts\python.exe src\rank.py --candidates ".\candidates.jsonl" --out tonumoy_mukherjee.csv
 > .\.venv\Scripts\python.exe validate_submission.py tonumoy_mukherjee.csv
 > ```
+
+### Step 2b — Smoke-test instantly on the bundled sample (no dataset needed)
+
+The repo ships `sample.jsonl` (50 records) so a **fresh clone runs out of the
+box** — useful to confirm the pipeline works before you bring in the full dataset:
+
+```bash
+python src/rank.py --candidates ./sample.jsonl --out ./sample_out.csv
+```
+
+This writes a ranked CSV for the 50 sample candidates. Note: `validate_submission.py`
+enforces *exactly* 100 rows (the real submission size), so run it only on the full
+output from Step 2 — not on this 50-row sample.
 
 ### Step 3 — Run any of the three modes (`--backend`)
 
