@@ -3,26 +3,69 @@
 Ranks the top-100 candidates from the 100,000-candidate pool for the released
 **Senior AI Engineer — Founding Team** JD. Built for the Data & AI Challenge.
 
-## Reproduce the submission (single command)
+## Run it locally — exact commands (anyone)
+
+**Prerequisites:** Python 3.10+ and the `candidates.jsonl` (or
+`candidates.jsonl.gz`) file from the challenge bundle, placed in this folder.
+
+### Step 1 — Clone and set up (one time)
 
 ```bash
+git clone https://github.com/Tonumoy/redrob-candidate-ranker.git
+cd redrob-candidate-ranker
 git lfs install && git lfs pull          # fetch the precomputed embeddings (~146 MB)
 pip install -r requirements.txt
-python src/rank.py --candidates ./candidates.jsonl --out ./submission.csv
-python validate_submission.py ./submission.csv   # -> "Submission is valid."
 ```
 
-The submitted CSV uses the **hybrid** backend (`--backend auto` picks hybrid when
-the dense artifacts are present). The ranking step itself is **CPU-only, no
+### Step 2 — Generate the submission file (one command)
+
+```bash
+python src/rank.py --candidates ./candidates.jsonl --out ./tonumoy_mukherjee.csv
+python validate_submission.py ./tonumoy_mukherjee.csv      # -> "Submission is valid."
+```
+
+`tonumoy_mukherjee.csv` (a header + 100 rows of
+`candidate_id,rank,score,reasoning`) is the file you upload. With no `--backend`
+flag, `rank.py` defaults to **`auto`**, which selects the shipped **hybrid**
+ranking when the LFS embeddings are present. The ranking step is **CPU-only, no
 network, well under the 5-min / 16 GB budget** — it just *loads* the precomputed
 embeddings (numpy) and computes TF-IDF (scikit-learn); measured **~95–140 s in
-under 8 GB RAM** on a 2-core Intel i7-7500U laptop. `candidates.jsonl` or
-`candidates.jsonl.gz` both work.
+under 8 GB RAM** on a 2-core Intel i7-7500U laptop. Both `candidates.jsonl` and
+`candidates.jsonl.gz` work.
+
+> **Windows / VS Code (PowerShell), using the bundled venv** — identical two
+> steps, with explicit paths:
+> ```powershell
+> cd "D:\India Runs Hackathon\redrob-ranker\redrob-ranker"
+> .\.venv\Scripts\python.exe src\rank.py --candidates ".\candidates.jsonl" --out tonumoy_mukherjee.csv
+> .\.venv\Scripts\python.exe validate_submission.py tonumoy_mukherjee.csv
+> ```
+
+### Step 3 — Run any of the three modes (`--backend`)
+
+The same command runs all three measured semantic backends — just add
+`--backend`. Each writes a valid submission CSV; **`hybrid` is what we ship.**
+
+```bash
+# SHIPPED — 0.3*dense + 0.7*TF-IDF: keyword precision at the top + dense recall
+python src/rank.py --candidates ./candidates.jsonl --out out_hybrid.csv --backend hybrid
+
+# keywords only — pure scikit-learn TF-IDF, fully offline, needs no embeddings
+python src/rank.py --candidates ./candidates.jsonl --out out_tfidf.csv  --backend tfidf
+
+# embeddings only — cosine over bge-small (needs the LFS artifacts)
+python src/rank.py --candidates ./candidates.jsonl --out out_dense.csv  --backend dense
+
+# default — hybrid if artifacts present, else automatically falls back to tfidf
+python src/rank.py --candidates ./candidates.jsonl --out out_auto.csv   --backend auto
+```
+
+(See the **Ranking modes** table below for what each does and when to use it.)
 
 > No `git-lfs`? The `.npy` files arrive as pointer stubs and `rank.py`
 > automatically falls back to the **TF-IDF** backend (still valid, fully offline).
 > To restore the exact hybrid, run `python src/precompute_embeddings.py
-> --candidates ./candidates.jsonl` to regenerate the artifacts, or
+> --candidates ./candidates.jsonl` to regenerate the artifacts, or use
 > `--backend tfidf` to force the no-artifact mode.
 
 ## Live sandbox (demo)
